@@ -1,0 +1,24 @@
+Metadata-Version: 2.1
+Name: pdfmerger
+Version: 0.5.0
+Summary: Merge PDFs (inspired by metaist/pdfmerge)
+Home-page: https://github.com/murrple-1/pdf-merger-python
+Author: Murray Christopherson
+Author-email: murraychristopherson@gmail.com
+License: UNKNOWN
+Keywords: pdf merge combine
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Description-Content-Type: text/markdown
+Requires-Dist: PyPDF2
+
+# pdf-merger-python
+
+
