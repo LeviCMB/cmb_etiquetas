@@ -187,3 +187,13 @@ if st.button(label="Preparar o Download"):
             st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=arquivo_combinado)
     else:
         st.error("O arquivo combinado não foi gerado corretamente.")
+st.text("")
+st.text("")
+
+# Adicionar botão para apagar as pastas após o processo
+if st.button("Finalizar Processos"):
+    shutil.rmtree(pasta_destino)
+    shutil.rmtree(pasta_destino_combinados)
+    st.success("Processos Finalizados com Sucesso!")
+
+           
