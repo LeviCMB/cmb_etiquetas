@@ -1,3 +1,4 @@
+from streamlit_gsheets import GSheetsConnection
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.pagesizes import portrait
 from reportlab.lib.pagesizes import letter
@@ -50,6 +51,11 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
 
 
 # Interface
+
+url = "https://docs.google.com/spreadsheets/d/10xH-WrGzH3efBqlrrUvX4kHotmL-sX19RN3_dn5YqyA/edit?usp=sharing"
+
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 with st.sidebar:
     st.header("GERADOR DE ETIQUETAS CMB")
     arquivo_pedido = st.file_uploader(label="Arraste ou Selecione o Arquivo em PDF do Pedido:", type=['pdf'])
@@ -68,7 +74,7 @@ if arquivo_pedido:
             st.error("Nenhum cliente identificado no PDF.")
 
         # Carregar base de dados dos produtos e extrair itens do pedido
-        df_excel = pd.read_excel("base/produtospacote.xlsx")
+        df_excel = conn.read(spreadsheet=url)
         pacote_dict = dict(zip(df_excel["Produto"], df_excel["ProdutoPacote"]))
         itens_pedido = extrair_itens_pedido(conteudo_pdf, pacote_dict)
 
