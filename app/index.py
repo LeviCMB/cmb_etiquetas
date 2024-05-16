@@ -23,8 +23,9 @@ pdfmetrics.registerFont(TTFont('ArialBd', 'fonts/Arial_Bold.ttf'))
 st.set_page_config(layout="wide", page_title="CMB Etiquetas")
 
 itens_pedido = []
+cliente = None
 def extrair_cliente(conteudo_pdf):
-    cliente = None
+    global cliente
     nome_fantasia = None
     for linha in conteudo_pdf.split('\n'):
         if 'Cliente:' in linha:
@@ -79,115 +80,115 @@ if arquivo_pedido:
         pacote_dict = dict(zip(df_excel["Produto"], df_excel["ProdutoPacote"]))
         itens_pedido = extrair_itens_pedido(conteudo_pdf, pacote_dict)
 
-# Diretório para salvar os PDFs
-pasta_destino = "pedidos"
+        # Diretório para salvar os PDFs
+        pasta_destino = "pedidos"
 
-# Criar o diretório se não existir
-if not os.path.exists(pasta_destino):
-    os.makedirs(pasta_destino)
-else:
-    # Limpar a pasta "pedidos" se já existir
-    shutil.rmtree(pasta_destino)
-    os.makedirs(pasta_destino)
+        # Criar o diretório se não existir
+        if not os.path.exists(pasta_destino):
+            os.makedirs(pasta_destino)
+        else:
+            # Limpar a pasta "pedidos" se já existir
+            shutil.rmtree(pasta_destino)
+            os.makedirs(pasta_destino)
 
-# Tamanho da página em pontos (9.8cm de largura x 2.5cm de altura)
-largura_cm = 9.8
-altura_cm = 2.5
-largura_pagina = largura_cm * 28.35  # 1cm = 28.35 pontos
-altura_pagina = altura_cm * 28.35
-pagesize = (largura_pagina, altura_pagina)
+        # Tamanho da página em pontos (9.8cm de largura x 2.5cm de altura)
+        largura_cm = 9.8
+        altura_cm = 2.5
+        largura_pagina = largura_cm * 28.35  # 1cm = 28.35 pontos
+        altura_pagina = altura_cm * 28.35
+        pagesize = (largura_pagina, altura_pagina)
 
-if itens_pedido: 
-    st.write("Iniciando a geração de etiquetas...")
-    # Gerar PDFs para cada item do pedido
-    for item in itens_pedido:
-        produto = item["produto"]
-        quantidade = item["quantidade"]
-        
-        for i in range(quantidade):
-            # Delimitando a largura do texto
-            linhas_produto = textwrap.wrap(produto, width=15)  # Ajuste o valor de width conforme necessário
-            
-            # Definindo o nome do arquivo
-            nome_arquivo = f"{cliente}_{produto}_{i+1}.pdf".replace('/', '-').replace(' ', '_')
-            caminho_completo = os.path.join(pasta_destino, nome_arquivo)
-            
-            # Criar o arquivo PDF com a página configurada
-            c = canvas.Canvas(caminho_completo, pagesize=pagesize)
-            c.setFont("Arial", 10)  # Fonte e tamanho ajustáveis conforme necessário
+        if itens_pedido: 
+            st.write("Iniciando a geração de etiquetas...")
+            # Gerar PDFs para cada item do pedido
+            for item in itens_pedido:
+                produto = item["produto"]
+                quantidade = item["quantidade"]
+                
+                for i in range(quantidade):
+                    # Delimitando a largura do texto
+                    linhas_produto = textwrap.wrap(produto, width=15)  # Ajuste o valor de width conforme necessário
+                    
+                    # Definindo o nome do arquivo
+                    nome_arquivo = f"{cliente}_{produto}_{i+1}.pdf".replace('/', '-').replace(' ', '_')
+                    caminho_completo = os.path.join(pasta_destino, nome_arquivo)
+                    
+                    # Criar o arquivo PDF com a página configurada
+                    c = canvas.Canvas(caminho_completo, pagesize=pagesize)
+                    c.setFont("Arial", 10)  # Fonte e tamanho ajustáveis conforme necessário
 
-            # Verificar se o produto existe no DataFrame
-            if produto in df_excel["Produto"].values:
-                descricao_produto = df_excel[df_excel["Produto"] == produto]["Descricao"].values[0]
+                    # Verificar se o produto existe no DataFrame
+                    if produto in df_excel["Produto"].values:
+                        descricao_produto = df_excel[df_excel["Produto"] == produto]["Descricao"].values[0]
+                    else:
+                        # Usar o nome do produto como descrição padrão
+                        descricao_produto = produto
+
+                    # Concatenar o nome do produto com a descrição
+                    texto_completo = f"{produto} - {descricao_produto}"
+
+                    # Converter o texto completo em uma string
+                    texto_completo = str(texto_completo)
+
+                    # Dividir o texto completo em linhas com quebra de linha a partir da largura
+                    linhas_texto = textwrap.wrap(texto_completo, width=25)  # Ajuste o valor de width conforme necessário
+
+                    # Calcular a altura total do texto
+                    altura_total_texto = len(linhas_produto) * 1  # Considerando 10 pontos de altura para cada linha de texto
+                    
+                    # Posicionar o texto verticalmente ao centro da página
+                    posicao_y = (altura_pagina - altura_total_texto) / 2 + (len(linhas_produto) - 1) * 5
+
+                    # Desenhar o texto completo
+                    for linha in linhas_texto:
+                        largura_texto = c.stringWidth(linha, "Arial", 10)
+                        posicao_x = (largura_pagina - largura_texto) / 2
+                        c.drawString(posicao_x, posicao_y, linha)
+                        posicao_y -= 10  # Descer para a próxima linha
+                    
+                    c.save()
+            st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
+
+
+        merger = PyPDF2.PdfMerger()
+
+        lista_arquivos = os.listdir("pedidos")
+        lista_arquivos.sort()
+        for arquivo in lista_arquivos:
+            if ".pdf" in arquivo:
+                caminho_arquivo = os.path.join("pedidos", arquivo)
+                if os.path.isfile(caminho_arquivo):  # Verifica se é um arquivo válido
+                    merger.append(caminho_arquivo)
+
+        # Diretório para salvar o PDF combinado
+        pasta_destino_combinados = "pedidos_combinados"
+
+        # Criar o diretório se não existir
+        if not os.path.exists(pasta_destino_combinados):
+            os.makedirs(pasta_destino_combinados)
+
+        # Definir o caminho completo para o arquivo PDF combinado
+        arquivo_combinado = os.path.join(pasta_destino_combinados, f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
+
+        # Escrever o PDF combinado em um novo arquivo
+        merger.write(arquivo_combinado)
+        merger.close()  # Fechar o arquivo após a escrita
+
+        # Fazer o download do arquivo
+        if st.button(label="Preparar o Download"):
+            if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
+                with open(arquivo_combinado, "rb") as file:
+                    bytes = file.read()
+                    st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=arquivo_combinado)
             else:
-                # Usar o nome do produto como descrição padrão
-                descricao_produto = produto
+                st.error("O arquivo combinado não foi gerado corretamente.")
+        st.text("")
+        st.text("")
 
-            # Concatenar o nome do produto com a descrição
-            texto_completo = f"{produto} - {descricao_produto}"
-
-            # Converter o texto completo em uma string
-            texto_completo = str(texto_completo)
-
-            # Dividir o texto completo em linhas com quebra de linha a partir da largura
-            linhas_texto = textwrap.wrap(texto_completo, width=25)  # Ajuste o valor de width conforme necessário
-
-            # Calcular a altura total do texto
-            altura_total_texto = len(linhas_produto) * 1  # Considerando 10 pontos de altura para cada linha de texto
-            
-            # Posicionar o texto verticalmente ao centro da página
-            posicao_y = (altura_pagina - altura_total_texto) / 2 + (len(linhas_produto) - 1) * 5
-
-            # Desenhar o texto completo
-            for linha in linhas_texto:
-                largura_texto = c.stringWidth(linha, "Arial", 10)
-                posicao_x = (largura_pagina - largura_texto) / 2
-                c.drawString(posicao_x, posicao_y, linha)
-                posicao_y -= 10  # Descer para a próxima linha
-            
-            c.save()
-    st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
-
-
-merger = PyPDF2.PdfMerger()
-
-lista_arquivos = os.listdir("pedidos")
-lista_arquivos.sort()
-for arquivo in lista_arquivos:
-    if ".pdf" in arquivo:
-        caminho_arquivo = os.path.join("pedidos", arquivo)
-        if os.path.isfile(caminho_arquivo):  # Verifica se é um arquivo válido
-            merger.append(caminho_arquivo)
-
-# Diretório para salvar o PDF combinado
-pasta_destino_combinados = "pedidos_combinados"
-
-# Criar o diretório se não existir
-if not os.path.exists(pasta_destino_combinados):
-    os.makedirs(pasta_destino_combinados)
-
-# Definir o caminho completo para o arquivo PDF combinado
-arquivo_combinado = os.path.join(pasta_destino_combinados, f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
-
-# Escrever o PDF combinado em um novo arquivo
-merger.write(arquivo_combinado)
-merger.close()  # Fechar o arquivo após a escrita
-
-# Fazer o download do arquivo
-if st.button(label="Preparar o Download"):
-    if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
-        with open(arquivo_combinado, "rb") as file:
-            bytes = file.read()
-            st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=arquivo_combinado)
-    else:
-        st.error("O arquivo combinado não foi gerado corretamente.")
-st.text("")
-st.text("")
-
-# Adicionar botão para apagar as pastas após o processo
-if st.button("Finalizar Processos"):
-    shutil.rmtree(pasta_destino)
-    shutil.rmtree(pasta_destino_combinados)
-    st.success("Processos Finalizados com Sucesso!")
+        # Adicionar botão para apagar as pastas após o processo
+        if st.button("Finalizar Processos"):
+            shutil.rmtree(pasta_destino)
+            shutil.rmtree(pasta_destino_combinados)
+            st.success("Processos Finalizados com Sucesso!")
 
            
