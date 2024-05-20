@@ -26,16 +26,12 @@ itens_pedido = []
 cliente = None
 def extrair_cliente(conteudo_pdf):
     global cliente
-    nome_fantasia = None
     for linha in conteudo_pdf.split('\n'):
         if 'Cliente:' in linha:
-            cliente = linha.split(':')[1].split('Nome Fantasia:')[0].strip()
+            cliente = linha.split(':')[1].strip()
             return cliente
-        elif linha.startswith('Nome Fantasia:'):
-            nome_fantasia = linha.split(':')[1].strip()
-            if cliente and nome_fantasia:
-                return f"{cliente} / {nome_fantasia}"
     return None
+
 
 def extrair_itens_pedido(conteudo_pdf, pacote_dict):
     itens_pedido = []
@@ -51,7 +47,19 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
             itens_pedido.append({'produto': produto, 'quantidade': quantidade})
     return itens_pedido
 
-
+def criar_etiqueta(nome_arquivo, texto, pagesize):
+        c = canvas.Canvas(nome_arquivo, pagesize=pagesize)
+        c.setFont("Arial", 10)
+        linhas_texto = textwrap.wrap(texto, width=25)
+        altura_total_texto = len(linhas_texto) * 10
+        posicao_y = (pagesize[1] - altura_total_texto) / 2 + (len(linhas_texto) - 1) * 5
+        for linha in linhas_texto:
+            largura_texto = c.stringWidth(linha, "Arial", 10)
+            posicao_x = (pagesize[0] - largura_texto) / 2
+            c.drawString(posicao_x, posicao_y, linha)
+            posicao_y -= 10
+        c.save()
+        
 # Interface
 
 url = "https://docs.google.com/spreadsheets/d/10xH-WrGzH3efBqlrrUvX4kHotmL-sX19RN3_dn5YqyA/edit?usp=sharing"
@@ -98,7 +106,13 @@ if arquivo_pedido:
         altura_pagina = altura_cm * 28.35
         pagesize = (largura_pagina, altura_pagina)
 
+
         if itens_pedido: 
+
+            # Gerar a etiqueta do cliente
+            nome_arquivo_cliente = os.path.join(pasta_destino, f"{cliente}_cliente.pdf".replace('/', '-').replace(' ', '_'))
+            criar_etiqueta(nome_arquivo_cliente, cliente, pagesize)
+
             st.write("Iniciando a geração de etiquetas...")
             # Gerar PDFs para cada item do pedido
             for item in itens_pedido:
@@ -149,11 +163,9 @@ if arquivo_pedido:
                     c.save()
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
 
-
         merger = PyPDF2.PdfMerger()
 
         lista_arquivos = os.listdir("pedidos")
-        lista_arquivos.sort()
         for arquivo in lista_arquivos:
             if ".pdf" in arquivo:
                 caminho_arquivo = os.path.join("pedidos", arquivo)
@@ -179,16 +191,17 @@ if arquivo_pedido:
             if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
                 with open(arquivo_combinado, "rb") as file:
                     bytes = file.read()
-                    st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=arquivo_combinado)
+                    st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
+                    
             else:
                 st.error("O arquivo combinado não foi gerado corretamente.")
         st.text("")
         st.text("")
 
-        # Adicionar botão para apagar as pastas após o processo
-        if st.button("Finalizar Processos"):
-            shutil.rmtree(pasta_destino)
-            shutil.rmtree(pasta_destino_combinados)
-            st.success("Processos Finalizados com Sucesso!")
-
+    # Adicionar botão para apagar as pastas após o processo
+    if st.button("Finalizar Processos"):
+                shutil.rmtree(pasta_destino)
+                shutil.rmtree(pasta_destino_combinados)
+                st.success("Processos Finalizados com Sucesso!")
+                
            
