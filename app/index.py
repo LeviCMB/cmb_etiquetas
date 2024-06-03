@@ -5,8 +5,8 @@ from reportlab.lib.pagesizes import portrait
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
+from datetime import date
 import streamlit as st
-import pandas as pd
 import pdfplumber
 import textwrap
 import PyPDF2
@@ -21,6 +21,10 @@ pdfmetrics.registerFont(TTFont('Arial', 'fonts/Arial.ttf'))
 pdfmetrics.registerFont(TTFont('ArialBd', 'fonts/Arial_Bold.ttf'))
 
 st.set_page_config(layout="wide", page_title="CMB Etiquetas")
+
+data_fabricacao = date.today()
+data_fabricacao = data_fabricacao.strftime("%d/%m/%Y")
+st.success(f"Data de Fabricaçao dos Produtos: :blue[{data_fabricacao}]") 
 
 itens_pedido = []
 cliente = None
@@ -46,19 +50,6 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
         else:
             itens_pedido.append({'produto': produto, 'quantidade': quantidade})
     return itens_pedido
-
-def criar_etiqueta(nome_arquivo, texto, pagesize):
-        c = canvas.Canvas(nome_arquivo, pagesize=pagesize)
-        c.setFont("Arial", 10)
-        linhas_texto = textwrap.wrap(texto, width=25)
-        altura_total_texto = len(linhas_texto) * 10
-        posicao_y = (pagesize[1] - altura_total_texto) / 2 + (len(linhas_texto) - 1) * 5
-        for linha in linhas_texto:
-            largura_texto = c.stringWidth(linha, "Arial", 10)
-            posicao_x = (pagesize[0] - largura_texto) / 2
-            c.drawString(posicao_x, posicao_y, linha)
-            posicao_y -= 10
-        c.save()
         
 # Interface
 
@@ -106,13 +97,7 @@ if arquivo_pedido:
         altura_pagina = altura_cm * 28.35
         pagesize = (largura_pagina, altura_pagina)
 
-
-        if itens_pedido: 
-
-            # Gerar a etiqueta do cliente
-            nome_arquivo_cliente = os.path.join(pasta_destino, f"{cliente}_cliente.pdf".replace('/', '-').replace(' ', '_'))
-            criar_etiqueta(nome_arquivo_cliente, cliente, pagesize)
-
+        if itens_pedido:
             st.write("Iniciando a geração de etiquetas...")
             # Gerar PDFs para cada item do pedido
             for item in itens_pedido:
@@ -133,22 +118,22 @@ if arquivo_pedido:
 
                     # Verificar se o produto existe no DataFrame
                     if produto in df_excel["Produto"].values:
-                        descricao_produto = df_excel[df_excel["Produto"] == produto]["Descricao"].values[0]
+                        descricao_produto = df_excel[df_excel ["Produto"] == produto]["Descricao"].values[0]
                     else:
                         # Usar o nome do produto como descrição padrão
                         descricao_produto = produto
-
+                    
                     # Concatenar o nome do produto com a descrição
-                    texto_completo = f"{produto} - {descricao_produto}"
+                    texto_completo = f"{descricao_produto} - {data_fabricacao}"
 
                     # Converter o texto completo em uma string
                     texto_completo = str(texto_completo)
 
                     # Dividir o texto completo em linhas com quebra de linha a partir da largura
-                    linhas_texto = textwrap.wrap(texto_completo, width=25)  # Ajuste o valor de width conforme necessário
+                    linhas_texto = textwrap.wrap(texto_completo, width=55)  # Ajuste o valor de width conforme necessário
 
                     # Calcular a altura total do texto
-                    altura_total_texto = len(linhas_produto) * 1  # Considerando 10 pontos de altura para cada linha de texto
+                    altura_total_texto = len(linhas_produto) * -5  # Considerando 10 pontos de altura para cada linha de texto
                     
                     # Posicionar o texto verticalmente ao centro da página
                     posicao_y = (altura_pagina - altura_total_texto) / 2 + (len(linhas_produto) - 1) * 5
@@ -164,7 +149,7 @@ if arquivo_pedido:
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
 
         merger = PyPDF2.PdfMerger()
-
+        
         lista_arquivos = os.listdir("pedidos")
         for arquivo in lista_arquivos:
             if ".pdf" in arquivo:
