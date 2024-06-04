@@ -22,9 +22,8 @@ pdfmetrics.registerFont(TTFont('ArialBd', 'fonts/Arial_Bold.ttf'))
 
 st.set_page_config(layout="wide", page_title="CMB Etiquetas")
 
-data_fabricacao = date.today()
-data_fabricacao = data_fabricacao.strftime("%d/%m/%Y")
-st.success(f"Data de Fabricaçao dos Produtos: :blue[{data_fabricacao}]") 
+data_fabricacao = st.date_input(label="Data de Fabricaçao dos Produtos:", format="DD/MM/YYYY")
+
 
 itens_pedido = []
 cliente = None
@@ -53,6 +52,7 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
         
 # Interface
 
+
 url = "https://docs.google.com/spreadsheets/d/10xH-WrGzH3efBqlrrUvX4kHotmL-sX19RN3_dn5YqyA/edit?usp=sharing"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -62,6 +62,8 @@ with st.sidebar:
     arquivo_pedido = st.file_uploader(label="Arraste ou Selecione o Arquivo em PDF do Pedido:", type=['pdf'])
 
 if arquivo_pedido:
+    data_fabricacao = data_fabricacao.strftime("%d/%m/%Y")
+    st.success(f"Data de Fabricaçao dos Produtos: :blue[{data_fabricacao}]") 
     arquivo_pedido_bytes = io.BytesIO(arquivo_pedido.read())
     with pdfplumber.open(arquivo_pedido_bytes) as pdf:
         conteudo_pdf = ""
