@@ -1,24 +1,13 @@
-from reportlab.pdfbase.pdfmetrics import registerFont
 from streamlit_gsheets import GSheetsConnection
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.pagesizes import portrait
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
-from datetime import date
 import streamlit as st
 import pdfplumber
-import textwrap
 import PyPDF2
 import shutil
 import math
 import re
 import io
 import os
-
-# Registrar as fontes
-pdfmetrics.registerFont(TTFont('Arial', 'fonts/Arial.ttf'))
-pdfmetrics.registerFont(TTFont('ArialBd', 'fonts/Arial_Bold.ttf'))
 
 st.set_page_config(layout="wide", page_title="CMB Etiquetas")
 
@@ -93,11 +82,6 @@ if arquivo_pedido:
             os.makedirs(pasta_destino)
 
         # Tamanho da página em pontos (9.8cm de largura x 2.5cm de altura)
-        largura_cm = 9.8
-        altura_cm = 2.5
-        largura_pagina = largura_cm * 28.35  # 1cm = 28.35 pontos
-        altura_pagina = altura_cm * 28.35
-        pagesize = (largura_pagina, altura_pagina)
 
         if itens_pedido:
             st.write("Iniciando a geração de etiquetas...")
@@ -105,49 +89,72 @@ if arquivo_pedido:
             for item in itens_pedido:
                 produto = item["produto"]
                 quantidade = item["quantidade"]
-                
-                for i in range(quantidade):
-                    # Delimitando a largura do texto
-                    linhas_produto = textwrap.wrap(produto, width=15)  # Ajuste o valor de width conforme necessário
-                    
-                    # Definindo o nome do arquivo
-                    nome_arquivo = f"{cliente}_{produto}_{i+1}.pdf".replace('/', '-').replace(' ', '_')
-                    caminho_completo = os.path.join(pasta_destino, nome_arquivo)
-                    
-                    # Criar o arquivo PDF com a página configurada
-                    c = canvas.Canvas(caminho_completo, pagesize=pagesize)
-                    c.setFont("Arial", 10)  # Fonte e tamanho ajustáveis conforme necessário
 
+                for i in range(quantidade):
+                    fileName = f"{cliente}_{produto}_{i+1}.pdf".replace('/', '-').replace(' ', '_')
+                    documentTitle = cliente
+                    title = produto
+                    subTitle = 'etiquetas'  
+                    caminho_completo = os.path.join(pasta_destino, fileName)
+
+                    pdf = canvas.Canvas(caminho_completo)
+
+                    pdf.setPageSize((278, 71))
+                    pdf.setTitle(documentTitle)
+                    pdf.setTitle(title)
+                    
+                    
                     # Verificar se o produto existe no DataFrame
                     if produto in df_excel["Produto"].values:
                         descricao_produto = df_excel[df_excel ["Produto"] == produto]["Descricao"].values[0]
                     else:
                         # Usar o nome do produto como descrição padrão
                         descricao_produto = produto
+
+                    regex = r"(?m)^(.*?)(?::|\.)\s*(.*?)(?::|\.)\s*(.*?)$"
+
+                    match = re.search(regex, descricao_produto)
+                    if match:
+                        ingredientes = match.group(1).strip()
+                        descricao = match.group(2).strip()
+                        validade = match.group(3).strip()
+                    else:
+                        ingredientes = descricao_produto
+                        descricao = ""
+                        validade = ""
+
+                    if not any(char.isdigit() for char in validade):
+                        validade = 'Consumo Diário.'
+
+                    if descricao == "Informações na Embalagem" or descricao == "":
+                        pdf.setFont("Helvetica-Bold", 10)
+                        pdf.drawCentredString(140, 50, title)
+
+                        pdf.setFont("Helvetica", 10)
+                        pdf.drawString(5, 5, f"{validade}")
+                        pdf.setFont("Helvetica-Bold", 10)
+                        pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
+                    else:
+                        # Dividir a descrição em partes para o PDF
+                        parte1 = descricao[:70].strip()
+                        parte2 = descricao[70:].strip()
                     
-                    # Concatenar o nome do produto com a descrição
-                    texto_completo = f"{descricao_produto} - {data_fabricacao}"
+                        pdf.setFont("Helvetica-Bold", 10)
+                        pdf.drawCentredString(140, 60, title)
+                        # Desenhar as partes do texto no PDF
+                        pdf.setFont("Helvetica", 10)
+                        pdf.drawCentredString(140, 45, f"{ingredientes}:")
+                        
+                        pdf.setFont("Helvetica", 8)
+                        pdf.drawCentredString(140, 35, parte1)
+                        pdf.drawCentredString(140, 25, parte2)
 
-                    # Converter o texto completo em uma string
-                    texto_completo = str(texto_completo)
+                        pdf.setFont("Helvetica", 10)
+                        pdf.drawString(5, 5, f"{validade}")
+                        pdf.setFont("Helvetica-Bold", 10)
+                        pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
 
-                    # Dividir o texto completo em linhas com quebra de linha a partir da largura
-                    linhas_texto = textwrap.wrap(texto_completo, width=55)  # Ajuste o valor de width conforme necessário
-
-                    # Calcular a altura total do texto
-                    altura_total_texto = len(linhas_produto) * -5  # Considerando 10 pontos de altura para cada linha de texto
-                    
-                    # Posicionar o texto verticalmente ao centro da página
-                    posicao_y = (altura_pagina - altura_total_texto) / 2 + (len(linhas_produto) - 1) * 5
-
-                    # Desenhar o texto completo
-                    for linha in linhas_texto:
-                        largura_texto = c.stringWidth(linha, "Arial", 10)
-                        posicao_x = (largura_pagina - largura_texto) / 2
-                        c.drawString(posicao_x, posicao_y, linha)
-                        posicao_y -= 10  # Descer para a próxima linha
-                    
-                    c.save()
+                    pdf.save()
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
 
         merger = PyPDF2.PdfMerger()
@@ -190,5 +197,8 @@ if arquivo_pedido:
                 shutil.rmtree(pasta_destino)
                 shutil.rmtree(pasta_destino_combinados)
                 st.success("Processos Finalizados com Sucesso!")
-                
+
+st.write("##")
+st.write("Desenvolvido por CMB Capital")
+st.write("© 2024 CMB Capital. Todos os direitos reservados.")                
            
