@@ -153,10 +153,11 @@ if arquivo_pedido:
                         pdf.drawString(5, 5, f"{validade}")
                         pdf.setFont("Helvetica-Bold", 10)
                         pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
-
+                    
                     pdf.save()
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
-
+        # Ordenar a lista de arquivos antes de combinar
+        lista_arquivos = sorted(os.listdir(pasta_destino))
         merger = PyPDF2.PdfMerger()
         
         lista_arquivos = os.listdir("pedidos")
