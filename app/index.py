@@ -13,9 +13,9 @@ st.set_page_config(layout="wide", page_title="CMB Etiquetas")
 
 data_fabricacao = st.date_input(label="Data de Fabricaçao dos Produtos:", format="DD/MM/YYYY")
 
-
 itens_pedido = []
 cliente = None
+
 def extrair_cliente(conteudo_pdf):
     global cliente
     for linha in conteudo_pdf.split('\n'):
@@ -23,7 +23,6 @@ def extrair_cliente(conteudo_pdf):
             cliente = linha.split(':')[1].strip()
             return cliente
     return None
-
 
 def extrair_itens_pedido(conteudo_pdf, pacote_dict):
     itens_pedido = []
@@ -38,10 +37,8 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
         else:
             itens_pedido.append({'produto': produto, 'quantidade': quantidade})
     return itens_pedido
-        
+
 # Interface
-
-
 url = "https://docs.google.com/spreadsheets/d/10xH-WrGzH3efBqlrrUvX4kHotmL-sX19RN3_dn5YqyA/edit?usp=sharing"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -52,7 +49,7 @@ with st.sidebar:
 
 if arquivo_pedido:
     data_fabricacao = data_fabricacao.strftime("%d/%m/%Y")
-    st.success(f"Data de Fabricaçao dos Produtos: :blue[{data_fabricacao}]") 
+    st.success(f"Data de Fabricaçao dos Produtos: :blue[{data_fabricacao}]")
     arquivo_pedido_bytes = io.BytesIO(arquivo_pedido.read())
     with pdfplumber.open(arquivo_pedido_bytes) as pdf:
         conteudo_pdf = ""
@@ -82,31 +79,28 @@ if arquivo_pedido:
             os.makedirs(pasta_destino)
 
         # Tamanho da página em pontos (9.8cm de largura x 2.5cm de altura)
-
         if itens_pedido:
             st.write("Iniciando a geração de etiquetas...")
             # Gerar PDFs para cada item do pedido
-            for item in itens_pedido:
+            for idx, item in enumerate(itens_pedido):
                 produto = item["produto"]
                 quantidade = item["quantidade"]
 
                 for i in range(quantidade):
-                    fileName = f"{cliente}_{produto}_{i+1}.pdf".replace('/', '-').replace(' ', '_')
+                    fileName = f"{idx+1:03d}_{cliente}_{produto}_{i+1:03d}.pdf".replace('/', '-').replace(' ', '_')
                     documentTitle = cliente
                     title = produto
-                    subTitle = 'etiquetas'  
+                    subTitle = 'etiquetas'
                     caminho_completo = os.path.join(pasta_destino, fileName)
 
                     pdf = canvas.Canvas(caminho_completo)
-
                     pdf.setPageSize((278, 71))
                     pdf.setTitle(documentTitle)
                     pdf.setTitle(title)
-                    
-                    
+
                     # Verificar se o produto existe no DataFrame
                     if produto in df_excel["Produto"].values:
-                        descricao_produto = df_excel[df_excel ["Produto"] == produto]["Descricao"].values[0]
+                        descricao_produto = df_excel[df_excel["Produto"] == produto]["Descricao"].values[0]
                     else:
                         # Usar o nome do produto como descrição padrão
                         descricao_produto = produto
@@ -138,13 +132,13 @@ if arquivo_pedido:
                         # Dividir a descrição em partes para o PDF
                         parte1 = descricao[:70].strip()
                         parte2 = descricao[70:].strip()
-                    
+
                         pdf.setFont("Helvetica-Bold", 10)
                         pdf.drawCentredString(140, 60, title)
                         # Desenhar as partes do texto no PDF
                         pdf.setFont("Helvetica", 10)
                         pdf.drawCentredString(140, 45, f"{ingredientes}:")
-                        
+
                         pdf.setFont("Helvetica", 8)
                         pdf.drawCentredString(140, 35, parte1)
                         pdf.drawCentredString(140, 25, parte2)
@@ -153,17 +147,17 @@ if arquivo_pedido:
                         pdf.drawString(5, 5, f"{validade}")
                         pdf.setFont("Helvetica-Bold", 10)
                         pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
-                    
+
                     pdf.save()
-            st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")    
+            st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")
+
+        merger = PyPDF2.PdfMerger()
+
         # Ordenar a lista de arquivos antes de combinar
         lista_arquivos = sorted(os.listdir(pasta_destino))
-        merger = PyPDF2.PdfMerger()
-        
-        lista_arquivos = os.listdir("pedidos")
         for arquivo in lista_arquivos:
             if ".pdf" in arquivo:
-                caminho_arquivo = os.path.join("pedidos", arquivo)
+                caminho_arquivo = os.path.join(pasta_destino, arquivo)
                 if os.path.isfile(caminho_arquivo):  # Verifica se é um arquivo válido
                     merger.append(caminho_arquivo)
 
@@ -187,7 +181,7 @@ if arquivo_pedido:
                 with open(arquivo_combinado, "rb") as file:
                     bytes = file.read()
                     st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
-                    
+
             else:
                 st.error("O arquivo combinado não foi gerado corretamente.")
         st.text("")
@@ -195,11 +189,10 @@ if arquivo_pedido:
 
     # Adicionar botão para apagar as pastas após o processo
     if st.button("Finalizar Processos"):
-                shutil.rmtree(pasta_destino)
-                shutil.rmtree(pasta_destino_combinados)
-                st.success("Processos Finalizados com Sucesso!")
+        shutil.rmtree(pasta_destino)
+        shutil.rmtree(pasta_destino_combinados)
+        st.success("Processos Finalizados com Sucesso!")
 
 st.write("##")
 st.write("Desenvolvido por CMB Capital")
-st.write("© 2024 CMB Capital. Todos os direitos reservados.")                
-           
+st.write("© 2024 CMB Capital. Todos os direitos reservados.")
