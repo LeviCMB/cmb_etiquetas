@@ -1,4 +1,5 @@
 from streamlit_gsheets import GSheetsConnection
+from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 import streamlit as st
 import pdfplumber
@@ -92,9 +93,11 @@ if arquivo_pedido:
                     title = produto
                     subTitle = 'etiquetas'
                     caminho_completo = os.path.join(pasta_destino, fileName)
-
+                    
                     pdf = canvas.Canvas(caminho_completo)
-                    pdf.setPageSize((278, 71))
+                    page_width = 9.8 / 2.54 * inch  # Convertendo cm para polegadas e depois para pontos
+                    page_height = 2.5 / 2.54 * inch  # Convertendo cm para polegadas e depois para pontos
+                    pdf.setPageSize((page_width, page_height))
                     pdf.setTitle(documentTitle)
                     pdf.setTitle(title)
 
@@ -122,12 +125,13 @@ if arquivo_pedido:
 
                     if descricao == "Informações na Embalagem" or descricao == "":
                         pdf.setFont("Helvetica-Bold", 10)
-                        pdf.drawCentredString(140, 50, title)
+                        pdf.drawCentredString(page_width / 2, page_height - 20, title)
 
+                        # Ajustando o texto da validade e data de fabricação
                         pdf.setFont("Helvetica", 10)
                         pdf.drawString(5, 5, f"{validade}")
                         pdf.setFont("Helvetica-Bold", 10)
-                        pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
+                        pdf.drawString(page_width - 80, 5, f"Fab: {data_fabricacao}")
                     else:
                         # Dividir a descrição em partes para o PDF
                         parte1 = descricao[:70].strip()
@@ -140,13 +144,14 @@ if arquivo_pedido:
                         pdf.drawCentredString(140, 45, f"{ingredientes}:")
 
                         pdf.setFont("Helvetica", 8)
-                        pdf.drawCentredString(140, 35, parte1)
-                        pdf.drawCentredString(140, 25, parte2)
+                        pdf.drawCentredString(page_width / 2, page_height - 35, parte1)
+                        pdf.drawCentredString(page_width / 2, page_height - 45, parte2)
 
+                        # Ajustando o texto da validade e data de fabricação
                         pdf.setFont("Helvetica", 10)
                         pdf.drawString(5, 5, f"{validade}")
                         pdf.setFont("Helvetica-Bold", 10)
-                        pdf.drawString(200, 5, f"Fab: {data_fabricacao}")
+                        pdf.drawString(page_width - 80, 5, f"Fab: {data_fabricacao}")
 
                     pdf.save()
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")
