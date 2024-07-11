@@ -10,7 +10,10 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 import PyPDF2
 
-st.set_page_config(layout="wide", page_title="CMB Etiquetas")
+st.set_page_config(
+    layout="wide", 
+    page_title="CMB Etiquetas",
+    page_icon= "logo.ico")
 
 data_fabricacao = st.date_input(label="Data de Fabricaçao dos Produtos:", format="DD/MM/YYYY")
 
