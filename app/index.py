@@ -1,14 +1,14 @@
-from streamlit_gsheets import GSheetsConnection
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
 import streamlit as st
 import pdfplumber
-import PyPDF2
-import shutil
 import math
 import re
 import io
 import os
+import shutil
+from streamlit_gsheets import GSheetsConnection
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+import PyPDF2
 
 st.set_page_config(layout="wide", page_title="CMB Etiquetas")
 
@@ -27,16 +27,28 @@ def extrair_cliente(conteudo_pdf):
 
 def extrair_itens_pedido(conteudo_pdf, pacote_dict):
     itens_pedido = []
-    padrao_item = r"(\d+)\s*-\s*([\w\s&.,-/]+?)\s*(\d+)\s*(?:g'|G)?\s*(?:UN|Un|Und|und)"
+    padrao_item = r"(\d+) - (.*?) (\d+[\.,]?\d*) (UN|KG|und|un|kg|Kg|G|g)"
+
     for match in re.finditer(padrao_item, conteudo_pdf):
+        numero_item = match.group(1)
         produto = match.group(2).strip()
-        quantidade = int(match.group(3))
+        quantidade = match.group(3).replace(',', '.')
+        unidade = match.group(4)
+
+        # Converter quantidade para float para lidar com valores decimais
+        quantidade = float(quantidade)
+
+        # Verificar se o produto está no dicionário pacote_dict
         if produto in pacote_dict:
             valor_pacote = pacote_dict[produto]
             etiquetas_necessarias = math.ceil(quantidade / valor_pacote)
             itens_pedido.append({'produto': produto, 'quantidade': etiquetas_necessarias})
         else:
-            itens_pedido.append({'produto': produto, 'quantidade': quantidade})
+            # Produto não encontrado no banco de dados
+            st.warning(f"Produto não encontrado no banco de dados: {produto}")
+            # Adicionar o produto com quantidade 1 como padrão
+            itens_pedido.append({'produto': produto, 'quantidade': 1})
+    
     return itens_pedido
 
 # Interface
@@ -126,33 +138,37 @@ if arquivo_pedido:
                     if descricao == "Informações na Embalagem" or descricao == "":
                         pdf.setFont("Helvetica-Bold", 10)
                         pdf.drawCentredString(page_width / 2, page_height - 20, title)
-
+                        
                         # Ajustando o texto da validade e data de fabricação
-                        pdf.setFont("Helvetica", 10)
-                        pdf.drawString(5, 5, f"{validade}")
-                        pdf.setFont("Helvetica-Bold", 10)
-                        pdf.drawString(page_width - 80, 5, f"Fab: {data_fabricacao}")
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawString(30, 15, f"{validade}")
+                        pdf.setFont("Helvetica-Bold", 7)
+                        pdf.drawString(page_width - 80, 15, f"Fab.: {data_fabricacao}")
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawCentredString(140, 5, "Fabricado por Baxter Indústria de Alimentos Ltda CNPJ: 00.558.662/000-81")
+
                     else:
                         # Dividir a descrição em partes para o PDF
-                        parte1 = descricao[:70].strip()
-                        parte2 = descricao[70:].strip()
+                        parte1 = descricao[:90].strip()
+                        parte2 = descricao[90:].strip()
 
                         pdf.setFont("Helvetica-Bold", 10)
                         pdf.drawCentredString(140, 60, title)
                         # Desenhar as partes do texto no PDF
-                        pdf.setFont("Helvetica", 10)
-                        pdf.drawCentredString(140, 45, f"{ingredientes}:")
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawCentredString(140, 50, f"{ingredientes}:")
 
-                        pdf.setFont("Helvetica", 8)
-                        pdf.drawCentredString(page_width / 2, page_height - 35, parte1)
-                        pdf.drawCentredString(page_width / 2, page_height - 45, parte2)
+                        pdf.setFont("Helvetica", 6)
+                        pdf.drawCentredString(page_width / 2, page_height - 30, parte1)
+                        pdf.drawCentredString(page_width / 2, page_height - 40, parte2)
 
                         # Ajustando o texto da validade e data de fabricação
-                        pdf.setFont("Helvetica", 10)
-                        pdf.drawString(5, 5, f"{validade}")
-                        pdf.setFont("Helvetica-Bold", 10)
-                        pdf.drawString(page_width - 80, 5, f"Fab: {data_fabricacao}")
-
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawString(30, 15, f"{validade}")
+                        pdf.setFont("Helvetica-Bold", 7)
+                        pdf.drawString(page_width - 80, 15, f"Fab.: {data_fabricacao}")
+                        pdf.setFont("Helvetica", 7)
+                        pdf.drawCentredString(140, 5, "Fabricado por: Baxter Indústria de Alimentos LTDA CNPJ: 00.558.662/000-81")
                     pdf.save()
             st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")
 
@@ -178,9 +194,15 @@ if arquivo_pedido:
 
         # Escrever o PDF combinado em um novo arquivo
         merger.write(arquivo_combinado)
-        merger.close()  # Fechar o arquivo após a escrita
+        merger.close()
 
-        # Fazer o download do arquivo
+        st.write("PDF COMBINADO GERADO COM SUCESSO!")
+
+        # Fornecer o download do PDF combinado
+        with open(arquivo_combinado, "rb") as pdf_file:
+            PDFbyte = pdf_file.read()
+
+            # Fazer o download do arquivo
         if st.button(label="Preparar o Download"):
             if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
                 with open(arquivo_combinado, "rb") as file:
@@ -189,6 +211,7 @@ if arquivo_pedido:
 
             else:
                 st.error("O arquivo combinado não foi gerado corretamente.")
+            
         st.text("")
         st.text("")
 
