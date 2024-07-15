@@ -44,7 +44,14 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
         # Verificar se o produto está no dicionário pacote_dict
         if produto in pacote_dict:
             valor_pacote = pacote_dict[produto]
-            etiquetas_necessarias = math.ceil(quantidade / valor_pacote)
+            if unidade.lower() == 'kg':  # Se o produto for quantificado em kg, tratar como unidade única
+                etiquetas_necessarias = 1
+            else:
+                # Verificar se valor_pacote é zero para evitar divisão por zero
+                if valor_pacote == 0:
+                    etiquetas_necessarias = 0
+                else:
+                    etiquetas_necessarias = math.ceil(quantidade / valor_pacote)
             itens_pedido.append({'produto': produto, 'quantidade': etiquetas_necessarias})
         else:
             # Produto não encontrado no banco de dados
