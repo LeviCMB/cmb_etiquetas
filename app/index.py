@@ -9,6 +9,7 @@ from streamlit_gsheets import GSheetsConnection
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 import PyPDF2
+import time
 
 st.set_page_config(
     layout="wide", 
@@ -30,8 +31,7 @@ def extrair_cliente(conteudo_pdf):
 
 def extrair_itens_pedido(conteudo_pdf, pacote_dict):
     itens_pedido = []
-    padrao_item = r"(\d+) - (.*?) (\d+[\.,]?\d*) (UN|KG|und|un|kg|Kg|G|g)"
-
+    padrao_item = r"(\d+)\s-\s(.*?)\s(\d+[\.,]?\d*)\s(UN|KG|und|un|kg|Kg|G|g)"
     for match in re.finditer(padrao_item, conteudo_pdf):
         numero_item = match.group(1)
         produto = match.group(2).strip()
@@ -44,13 +44,11 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
         # Verificar se o produto está no dicionário pacote_dict
         if produto in pacote_dict:
             valor_pacote = pacote_dict[produto]
-            if unidade.lower() == 'kg':  # Se o produto for quantificado em kg, tratar como unidade única
+            if valor_pacote == 0:
+                    etiquetas_necessarias = 0
+            elif unidade.lower() == 'kg':  # Se o produto for quantificado em kg, tratar como unidade única
                 etiquetas_necessarias = 1
             else:
-                # Verificar se valor_pacote é zero para evitar divisão por zero
-                if valor_pacote == 0:
-                    etiquetas_necessarias = 0
-                else:
                     etiquetas_necessarias = math.ceil(quantidade / valor_pacote)
             itens_pedido.append({'produto': produto, 'quantidade': etiquetas_necessarias})
         else:
@@ -58,7 +56,7 @@ def extrair_itens_pedido(conteudo_pdf, pacote_dict):
             st.warning(f"Produto não encontrado no banco de dados: {produto}")
             # Adicionar o produto com quantidade 1 como padrão
             itens_pedido.append({'produto': produto, 'quantidade': 1})
-    
+            
     return itens_pedido
 
 # Interface
@@ -103,7 +101,6 @@ if arquivo_pedido:
 
         # Tamanho da página em pontos (9.8cm de largura x 2.5cm de altura)
         if itens_pedido:
-            st.write("Iniciando a geração de etiquetas...")
             # Gerar PDFs para cada item do pedido
             for idx, item in enumerate(itens_pedido):
                 produto = item["produto"]
@@ -180,8 +177,6 @@ if arquivo_pedido:
                         pdf.setFont("Helvetica", 7)
                         pdf.drawCentredString(140, 5, "Fabricado por: Baxter Indústria de Alimentos LTDA CNPJ: 00.558.662/000-81")
                     pdf.save()
-            st.write("PDF DE CADA ETIQUETA GERADO COM SUCESSO!")
-
         merger = PyPDF2.PdfMerger()
 
         # Ordenar a lista de arquivos antes de combinar
@@ -206,21 +201,22 @@ if arquivo_pedido:
         merger.write(arquivo_combinado)
         merger.close()
 
-        st.write("PDF COMBINADO GERADO COM SUCESSO!")
-
         # Fornecer o download do PDF combinado
         with open(arquivo_combinado, "rb") as pdf_file:
             PDFbyte = pdf_file.read()
 
             # Fazer o download do arquivo
-        if st.button(label="Preparar o Download"):
-            if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
-                with open(arquivo_combinado, "rb") as file:
-                    bytes = file.read()
-                    st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
-
-            else:
-                st.error("O arquivo combinado não foi gerado corretamente.")
+        # Fornecer o download do PDF combinado, se houver etiquetas geradas
+        if lista_arquivos:
+            st.success("Etiquetas geradas com sucesso!")
+            # Fazer o download do arquivo
+            if st.button(label="Preparar o Download"):
+                if os.path.exists(arquivo_combinado):  # Verifica se o arquivo combinado existe
+                    with open(arquivo_combinado, "rb") as file:
+                        bytes = file.read()
+                        st.download_button(label="Clique aqui para baixar o PDF gerado", data=bytes, file_name=f"{cliente}_etiquetas.pdf".replace('/', '-').replace(' ', '_'))
+        else:
+            st.warning("Nenhuma etiqueta gerada para impressão.")
             
         st.text("")
         st.text("")
